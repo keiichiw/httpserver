@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include "parser.h"
 
@@ -13,25 +14,42 @@ void chomp (char* c) {
 	}
 	return;
 }
-reqinfo* errorReq (reqinfo* r, int num) {
+
+void errorReq (reqinfo* r, int num) {
 	r -> error = num;
-	return r;
+	switch (num) {
+	case 11:
+		fprintf (stderr, "Header doesn't start from \"Host:\"\n");
+		break;
+	case 100:
+		fprintf(stderr, "method is too long\n");
+		break;
+	default:
+		fprintf(stderr, "Error\n");
+	}
+	return;
 }
 
 
 /*
 	m = "GET /index.php HTTP/1.1"
  */
-reqinfo* parseMethod (reqinfo* r, char* m){
+void parseMethod (reqinfo* r, char* m){
 	char *u;
 	char *v;
 	int i;
 	r->error = 0;
 	chomp(m);
-
+	if (strlen(m) > 256) {
+		errorReq(r, 100);
+		return;
+	}
 	while(m[i] != ' ') {
 		i++;
-		if (m[i] == '\0') return errorReq(r, 1);
+		if (m[i] == '\0') {
+			errorReq(r, 1);
+			return;
+		}
 	}
 	u = m+i+1;
 	while(*u != ' '&& *u != '\0') u++;
@@ -41,13 +59,17 @@ reqinfo* parseMethod (reqinfo* r, char* m){
 	} else if (strcmp(m, "HEAD") == 0) {
 		r -> method = 1;
 	} else {
-		return errorReq(r, 2);
+		errorReq(r, 2);
+		return;
 	}
 
 	i = 0;
 	while(u[i] != ' ') {
+		if (u[i] == '\0') {
+			errorReq(r, 3);
+			return;
+		}
 		i++;
-		if (u[i] == '\0') return errorReq(r, 3);
 	}
 	v = u+i+1;
 	while(*v != ' '&& *v != '\0') v++;
@@ -64,9 +86,29 @@ reqinfo* parseMethod (reqinfo* r, char* m){
 	} else if (strcmp(v, "HTTP/1.1") == 0) {
 		r -> version = 1;
 	} else {
-		return errorReq(r, 4);
+		errorReq(r, 4);
+		return;
 	}
+	return;
+}
 
-
-	return r;
+void parseHost (reqinfo* r, char* m){
+	char* h;
+	int i=0;
+	while (m[i] != ' ') {
+		if (m[i] == '\0') {
+			errorReq(r, 10);
+			return;
+		}
+		i++;
+	}
+	h=m+i+1;
+	m[i] = '\0';
+	if (strcmp(m, "Host:") == 0) {
+		errorReq(r, 11);
+		return;
+	}
+	r -> host = (char*) malloc(strlen(h) * sizeof(char));
+	strcpy(r -> host, h);
+	return;
 }

@@ -8,6 +8,6 @@ typedef struct {
 	int error;
 } reqinfo;
 void chomp (char*);
-reqinfo* parseMethod (reqinfo* , char*);
-
+void parseMethod (reqinfo* , char*);
+void parseHost (reqinfo* , char* );
 #endif

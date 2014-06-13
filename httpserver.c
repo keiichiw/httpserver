@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include "parser.h"
 #include "server.h"
 
 #define BUFF_SIZE 256
@@ -70,7 +71,11 @@ int echoBack(int cSock) {
 	if ((strsize = read(cSock, buff, BUFF_SIZE)) < 0) {
 		perror("recieve Error");
 	}
-	if (write(cSock, buff, strsize) != strsize) {
+	reqinfo *r;
+	r = (reqinfo*) malloc(sizeof(reqinfo));
+	parseMethod(r, buff);
+
+	if (write(cSock, r->host , strlen(r->host)) != (int)strlen(r->host)) {
 		fprintf(stderr, "%d/%s\n", strsize, buff);
 		perror("send error");
 	}
