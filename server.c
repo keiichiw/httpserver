@@ -5,29 +5,73 @@
 #include <unistd.h>
 #include <string.h>
 #include "server.h"
+#include "parser.h"
+#define BUFF_SIZE 256
 
-int socket_set (int *sSock, struct sockaddr_in *serverAddr, int portno) {
 
-	if ((*sSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-		perror("socket error");
-		return -1;
+reqinfo* getRequest (int cSock, char* droot) {
+	char buff[BUFF_SIZE];
+	int strsize;
+	reqinfo *r;
+	r = (reqinfo*) malloc(sizeof(reqinfo));
+	r -> host = "";
+	if ((strsize = read(cSock, buff, BUFF_SIZE)) < 0) {
+		perror("recieve Error");
+	}
+	buff[strsize] = '\0';
+	fprintf(stderr, "%s", buff);
+	parseMethod(r, buff);
+
+
+	if (r -> error) {
+		fprintf(stderr, "END :%d\n", r->error);
 	}
 
-	memset(serverAddr, 0, sizeof(*serverAddr));
-	serverAddr->sin_family = AF_INET;
-	serverAddr->sin_port = htons(portno);
-	serverAddr->sin_addr.s_addr = htonl(INADDR_ANY);
-
-
-	if (bind(*sSock, (struct sockaddr *) serverAddr, sizeof(*serverAddr)) < 0) {
-		perror("bind error");
-		return -1;
+	while ((strsize = read(cSock, buff, BUFF_SIZE)) < 0) {
+		if(strlen(buff) <= 2) {
+			break;
+		}
+		fprintf(stderr, "%s", buff);
+		parseHeader(r, buff);
 	}
 
-
-	if (listen(*sSock, 10) < 0) {
-		perror("listen error");
-		return -1;
+	if (r -> error) {
+		fprintf(stderr, "END :%d\n", r->error);
 	}
-	return 0;
+
+	if (strlen(r -> host) == 0) {
+		if (r -> version == 0) {
+			r -> host = droot;
+		} else {
+			fprintf(stderr, "No Host HTTP/%d %d", r->version, r -> error);
+		}
+	}
+
+  return r;
+}
+void sendGetRes (reqinfo* r, int cSock) {
+	char line1[100] = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n";
+	char line2[100] = "<html><head></head><body>hello.</body></html>\n";
+	if (write(cSock, line1, strlen(line1)) != strlen(line1)) {
+		perror("Fail to send message");
+	}
+	if (write(cSock, line2, strlen(line2)) != strlen(line2)) {
+		perror("Fail to send message");
+	}
+	close(cSock);
+	return;
+}
+void sendHeadRes (reqinfo* r, int cSock) {
+
+}
+
+void sendResponse (reqinfo* r, int cSock) {
+	if (r -> method == 0) {
+		sendGetRes(r, cSock);
+	} else if (r -> method == 1) {
+		sendHeadRes(r, cSock);
+	} else {
+		perror ("No Method");
+	}
+	return;
 }

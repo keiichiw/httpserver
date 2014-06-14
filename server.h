@@ -1,6 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H 1
-
-int socket_set(int*, struct sockaddr_in *, int);
-
+#include "parser.h"
+reqinfo* getRequest (int cSock, char* droot);
+void sendResponse (reqinfo* r, int cSock);
 #endif

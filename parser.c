@@ -4,6 +4,14 @@
 #include "parser.h"
 
 
+void all_free (reqinfo* r) {
+	free(r -> host);
+	free(r -> user_agent);
+	free(r -> accept);
+	free(r -> uri);
+	free(r);
+	return;
+}
 //remove CR-LF
 void chomp (char* c) {
 	int len = strlen(c);
@@ -99,7 +107,7 @@ void parseMethod (reqinfo* r, char* b){
 	return;
 }
 
-void parseHost (reqinfo* r, char* m){
+void parseHeader (reqinfo* r, char* m){
 	char* h;
 	int i=0;
 	while (m[i] != ' ') {
@@ -111,11 +119,20 @@ void parseHost (reqinfo* r, char* m){
 	}
 	h=m+i+1;
 	m[i] = '\0';
+
 	if (strcmp(m, "Host:") == 0) {
-		errorReq(r, 11);
-		return;
+		r -> host = (char*) malloc(strlen(h) * sizeof(char));
+		strcpy(r -> host, h);
+	} else if (strcmp(m, "User-Agent:") == 0) {
+		r -> user_agent = (char*) malloc(strlen(h) * sizeof(char));
+		strcpy(r -> user_agent, h);
+	} else if (strcmp(m, "Accept:") == 0) {
+		r -> accept = (char*) malloc(strlen(h) * sizeof(char));
+		strcpy(r -> accept, h);
+	} else {
+		//errorReq(r, 11);
+		fprintf(stderr, "Header Error: %s\n", m);
 	}
-	r -> host = (char*) malloc(strlen(h) * sizeof(char));
-	strcpy(r -> host, h);
+
 	return;
 }
