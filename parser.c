@@ -25,7 +25,7 @@ void errorReq (reqinfo* r, int num) {
 		fprintf(stderr, "method is too long\n");
 		break;
 	default:
-		fprintf(stderr, "Error\n");
+		fprintf(stderr, "Error %d\n", num);
 	}
 	return;
 }
@@ -34,25 +34,29 @@ void errorReq (reqinfo* r, int num) {
 /*
 	m = "GET /index.php HTTP/1.1"
  */
-void parseMethod (reqinfo* r, char* m){
+void parseMethod (reqinfo* r, char* b){
+	char *m;
 	char *u;
 	char *v;
-	int i;
-	r->error = 0;
-	chomp(m);
-	if (strlen(m) > 256) {
+	int i = 0;
+	if (strlen(b) > 256) {
 		errorReq(r, 100);
 		return;
 	}
+	m = (char*) malloc(256 * sizeof(char));
+	strcpy(m, b);
+	r->error = 0;
+	chomp(m);
+
 	while(m[i] != ' ') {
-		i++;
 		if (m[i] == '\0') {
 			errorReq(r, 1);
 			return;
 		}
+		i++;
 	}
 	u = m+i+1;
-	while(*u != ' '&& *u != '\0') u++;
+	while(*u == ' '&& *u != 0) u++;
 	m[i] = '\0';
 	if (strcmp(m, "GET") == 0) {
 		r -> method = 0;
@@ -71,24 +75,27 @@ void parseMethod (reqinfo* r, char* m){
 		}
 		i++;
 	}
+
 	v = u+i+1;
-	while(*v != ' '&& *v != '\0') v++;
+	while(*v == ' '&& *v != '\0') v++;
 	u[i] = '\0';
 	r -> uri = (char*) malloc(strlen(u) * sizeof(char));
 	strcpy(r -> uri, u);
 
 
 	i = 0;
-	while(v[i] != ' ') i++;
+	while(v[i] != ' ' && v[i] != 0) i++;
 	v[i] = '\0';
 	if (strcmp(v, "HTTP/1.0") == 0) {
 		r -> version = 0;
 	} else if (strcmp(v, "HTTP/1.1") == 0) {
 		r -> version = 1;
 	} else {
+		fprintf(stderr, "v = %s\n", v);
 		errorReq(r, 4);
 		return;
 	}
+
 	return;
 }
 

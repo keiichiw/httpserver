@@ -71,12 +71,29 @@ int echoBack(int cSock) {
 	if ((strsize = read(cSock, buff, BUFF_SIZE)) < 0) {
 		perror("recieve Error");
 	}
+	buff[strsize] = '\0';
 	reqinfo *r;
 	r = (reqinfo*) malloc(sizeof(reqinfo));
+
 	parseMethod(r, buff);
 
-	if (write(cSock, r->host , strlen(r->host)) != (int)strlen(r->host)) {
-		fprintf(stderr, "%d/%s\n", strsize, buff);
+	if (r -> error) {
+		fprintf(stderr, "END :%d\n", r->error);
+	}
+
+
+
+	if (write(cSock, r->uri , strlen(r->uri)) != (int)strlen(r->uri)) {
+		perror("send error");
+	}
+
+	char c[50];
+	strcpy(c, ((r->method)?"H\n":"G\n"));
+	if (write(cSock,  c, strlen(c)) != (int)strlen(c)) {
+		perror("send error");
+	}
+
+	if (write(cSock, "1.1\n", 4) != 4) {
 		perror("send error");
 	}
 
