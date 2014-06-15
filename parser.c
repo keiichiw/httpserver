@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "parser.h"
-#define BUFF_SIZE 20480
+#define BUFF_SIZE 1024
 
 void all_free (reqinfo* r) {
 	free(r -> host);

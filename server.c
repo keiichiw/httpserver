@@ -12,7 +12,7 @@
 #include "server.h"
 #include "parser.h"
 #include "header.h"
-#define BUFF_SIZE 2048
+#define BUFF_SIZE 10240
 
 char* statusMessage (reqinfo* r) {
 	switch (r -> status) {
@@ -25,13 +25,7 @@ char* statusMessage (reqinfo* r) {
 	case 404:
 		return "404 Not Found";
 	default:
-		return "404 Not Found";
-	}
-}
-
-void printError (reqinfo* r) {
-	if (r -> error) {
-		fprintf(stderr, "ERROR :%d\n", r->error);
+		return "501 Not Implemented";
 	}
 }
 
@@ -57,10 +51,9 @@ reqinfo* getRequest (int cSock) {
 		strsize += tsize;
 		if (isLastLine(buff)) break;
 	}
-	if (strsize >= BUFF_SIZE || isLastLine (buff) == 0) {
+	if (strsize >= BUFF_SIZE) {
 		perror("Request is too long");
-		r -> status = 400;
-		return r;
+		fprintf(stderr, "size=%d\n %s", strsize, buff);
 	}
 
 	//Parse Request
@@ -85,21 +78,21 @@ reqinfo* getRequest (int cSock) {
   return r;
 }
 
-int sendHeadRes (reqinfo* r, int cSock) {
+int sendHeadRes (reqinfo* r, int cSock, int flg) {
 	char res[100];
 	char time[100];
 	getGMT(time);
 	sprintf (res,
-					 "HTTP/1.%d %s Content-type: %s\r\nDate: %s\r\n\r\n",
+					 "HTTP/1.%d %s\r\nContent-type: %s\r\nDate: %s\r\n\r\n",
 					 r -> version, statusMessage(r),
 					 getContentType(r -> uri),
-					 time
-					 );
+					 time);
 
 	if (write(cSock, res, strlen(res)) != strlen(res)) {
 		perror("Fail to send message");
 		return -1;
 	}
+	if (flg == 1) close(cSock);
 	return 0;
 }
 
@@ -110,7 +103,7 @@ void sendGetRes (reqinfo* r, int cSock) {
 	int fd;
 	int strcnt = 0;
 	sprintf(path, "%s%s", r -> root, r -> uri);
-	sendHeadRes (r, cSock);
+	sendHeadRes (r, cSock, 0);
 
 	fprintf(stderr, "Path:%s", path);
 	if ((fd = open(path, O_RDONLY)) == -1) {
@@ -118,11 +111,15 @@ void sendGetRes (reqinfo* r, int cSock) {
 		if (errno == EACCES) {
 			r -> status = 404;
 		}
+		fprintf(stderr, "%s don't exist.", path);
 		close(fd);
 		return;
 	}
-
+	int sumcnt = 0;
+	fprintf(stderr,"sum = %d",sumcnt);
 	while ((strcnt = read(fd, buff, BUFF_SIZE)) != 0) {
+		sumcnt += strcnt;
+		fprintf(stderr,"sum = %d",sumcnt);
 		int wcnt = 0;
 		int flg  = 0;
 		if (strcnt == -1) {
@@ -135,11 +132,13 @@ void sendGetRes (reqinfo* r, int cSock) {
 				perror("Fail to send message");
 			}
 			wcnt += flg;
+			fprintf(stderr,"wcnt = %d",wcnt);
 		}
 	}
 
 	close(fd);
 	close(cSock);
+	perror("connection closed");
 	return;
 }
 
@@ -149,7 +148,7 @@ void sendResponse (reqinfo* r, int cSock) {
 	if (r -> method == 0) {
 		sendGetRes(r, cSock);
 	} else if (r -> method == 1) {
-		sendHeadRes(r, cSock);
+		sendHeadRes(r, cSock, 1);
 	} else {
 		perror ("No Method");
 	}

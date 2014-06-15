@@ -11,9 +11,9 @@ char* wday[7] = {"Sun\0", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char* getContentType (char* uri) {
 	int len = strlen(uri);
 	if (len > 4&&strcmp((uri+len-4), ".jpg") == 0) {
-		return "img/jpg";
+		return "image/jpeg";
 	} else if (len > 4&&strcmp((uri+len-4), ".png") == 0) {
-		return "img/png";
+		return "image/png";
 	} else {
 		return "text/html";
 	}
