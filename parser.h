@@ -1,18 +1,19 @@
 #ifndef PARSER_H
 #define PARSER_H 1
 typedef struct {
-	int version;//0 or 1
-	int method; // GET =0 HEAD=1
+	char* root;
 	int status;
+	int error;
+	int method; // GET =0 HEAD=1
+	char* uri;
+	int version;//0 or 1
 	char* host;
 	char* user_agent;
 	char* accept;
-	char* uri;
-	char* root;
-	int error;
 } reqinfo;
 void chomp (char*);
 char* parseMethod (reqinfo* , char*);
 void parseHeader (reqinfo* , char* );
 void all_free (reqinfo* );
+void printReq(reqinfo*);
 #endif

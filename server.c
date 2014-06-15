@@ -4,6 +4,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 #include "server.h"
 #include "parser.h"
 #define BUFF_SIZE 2048
@@ -60,6 +65,11 @@ reqinfo* getRequest (int cSock) {
 	//Parse Request
 	buff[strsize] = '\0';
 	chomp(buff);
+
+	fprintf(stderr, "\n+++++1++++\n%s\n+++2++\n", buff);
+
+
+
 	top = parseMethod(r, buff);
 	parseHeader(r, top);
 
@@ -87,21 +97,49 @@ int sendHeadRes (reqinfo* r, int cSock) {
 	return 0;
 }
 
-//TODO at first
-void sendGetRes (reqinfo* r, int cSock) {
-	char line2[100] = "<html><head></head><body>hello.</body></html>\n";
 
+void sendGetRes (reqinfo* r, int cSock) {
+	char path[BUFF_SIZE];
+	char buff[BUFF_SIZE];
+	int fd;
+	int strcnt = 0;
+	sprintf(path, "%s%s", r -> root, r -> uri);
 	sendHeadRes (r, cSock);
 
-	if (write(cSock, line2, strlen(line2)) != strlen(line2)) {
-		perror("Fail to send message");
+	fprintf(stderr, "Path:%s", path);
+	if ((fd = open(path, O_RDONLY)) == -1) {
+		r -> status = 400;
+		if (errno == EACCES) {
+			r -> status = 404;
+		}
+		close(fd);
+		return;
 	}
+
+	while ((strcnt = read(fd, buff, BUFF_SIZE)) != 0) {
+		int wcnt = 0;
+		int flg  = 0;
+		if (strcnt == -1) {
+			r -> status = 404;
+			break;
+		}
+		while (wcnt < strcnt &&
+					 (flg  = write (cSock, buff + wcnt, strcnt - wcnt))) {
+			if (flg == -1) {
+				perror("Fail to send message");
+			}
+			wcnt += flg;
+		}
+	}
+
+	close(fd);
 	close(cSock);
 	return;
 }
 
 
 void sendResponse (reqinfo* r, int cSock) {
+	printReq(r);
 	if (r -> method == 0) {
 		sendGetRes(r, cSock);
 	} else if (r -> method == 1) {
