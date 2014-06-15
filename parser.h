@@ -3,6 +3,7 @@
 typedef struct {
 	int version;//0 or 1
 	int method; // GET =0 HEAD=1
+	int status;
 	char* host;
 	char* user_agent;
 	char* accept;
@@ -10,7 +11,7 @@ typedef struct {
 	int error;
 } reqinfo;
 void chomp (char*);
-void parseMethod (reqinfo* , char*);
+char* parseMethod (reqinfo* , char*);
 void parseHeader (reqinfo* , char* );
 void all_free (reqinfo* );
 #endif

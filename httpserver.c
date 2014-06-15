@@ -50,6 +50,7 @@ int main (int argc, char* argv[]) {
 			close(sSock);
 			//while(1) {
 				reqinfo* r = getRequest(cSock, droot);
+				r -> status = 200;
 				sendResponse (r, cSock);
 				all_free(r);
 				//}
