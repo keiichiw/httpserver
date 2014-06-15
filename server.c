@@ -11,6 +11,7 @@
 #include <errno.h>
 #include "server.h"
 #include "parser.h"
+#include "header.h"
 #define BUFF_SIZE 2048
 
 char* statusMessage (reqinfo* r) {
@@ -86,9 +87,14 @@ reqinfo* getRequest (int cSock) {
 
 int sendHeadRes (reqinfo* r, int cSock) {
 	char res[100];
+	char time[100];
+	getGMT(time);
 	sprintf (res,
-					 "HTTP/1.%d %s Content-type: text/html\r\n\r\n",
-					 r -> version, statusMessage(r));
+					 "HTTP/1.%d %s Content-type: %s\r\nDate: %s\r\n\r\n",
+					 r -> version, statusMessage(r),
+					 getContentType(r -> uri),
+					 time
+					 );
 
 	if (write(cSock, res, strlen(res)) != strlen(res)) {
 		perror("Fail to send message");

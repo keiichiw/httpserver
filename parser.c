@@ -207,10 +207,10 @@ void parseHeader (reqinfo* r, char* top){
 		head = top;
 		body = top + i;
 		top  = top + j;
-		perror("********1***********::");
+		perror("\n********************");
 		fprintf(stderr,"head:%s\n",head);
 		fprintf(stderr,"body:%s\n",body);
-		perror("********2***********::");
+		perror("\n********************");
 		evalHeader (r, head, body);
 	}
 
