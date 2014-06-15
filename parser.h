@@ -8,6 +8,7 @@ typedef struct {
 	char* user_agent;
 	char* accept;
 	char* uri;
+	char* root;
 	int error;
 } reqinfo;
 void chomp (char*);

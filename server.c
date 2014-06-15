@@ -38,7 +38,7 @@ int isLastLine (char* s) { //line ends with \r\n\r\n
 	return 0;
 }
 
-reqinfo* getRequest (int cSock, char* droot) {
+reqinfo* getRequest (int cSock) {
 	char buff[BUFF_SIZE];
 	char* top;
 	int strsize = 0, tsize;
@@ -65,10 +65,8 @@ reqinfo* getRequest (int cSock, char* droot) {
 
 	//check Host:
 	if (strlen(r -> host) == 0) {
-		if (r -> version == 0) {
-			r -> host = droot;
-		} else {
-			fprintf(stderr, "No Host HTTP/%d %d", r->version, r -> error);
+		if (r -> version != 0) {
+			fprintf(stderr, "Error No Host HTTP/%d %d", r->version, r -> error);
 			r -> status = 400;
 		}
 	}
@@ -89,7 +87,7 @@ int sendHeadRes (reqinfo* r, int cSock) {
 	return 0;
 }
 
-
+//TODO at first
 void sendGetRes (reqinfo* r, int cSock) {
 	char line2[100] = "<html><head></head><body>hello.</body></html>\n";
 

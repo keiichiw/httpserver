@@ -49,8 +49,10 @@ int main (int argc, char* argv[]) {
 		}else if(procId == 0) {
 			close(sSock);
 			//while(1) {
-				reqinfo* r = getRequest(cSock, droot);
+				reqinfo* r = getRequest(cSock);
 				r -> status = 200;
+				r -> root = (char*) malloc(sizeof(char) * strlen(droot));
+				strcpy(r->root, droot);
 				sendResponse (r, cSock);
 				all_free(r);
 				//}
