@@ -78,82 +78,78 @@ int invalidUri (char* b) {
  */
 
 char* parseMethod (reqinfo* r, char* b){
-	char *m;
-	char *u;
-	char *v;
+	char *method;
+	char *uri;
+	char *ver;
 	char *head;
 	int i = 0;
 	if (strlen(b) > BUFF_SIZE) {
+		fprintf (stderr, "%s", b);
 		errorReq(r, 100);
 		return b;
 	}
-	m = (char*) malloc(256 * sizeof(char));
-	strcpy(m, b);
+	method = (char*) malloc(strlen(b) * sizeof(char));
+	strcpy(method, b);
 	r->error = 0;
-	chomp(m);
 
-	while(m[i] != ' ') {
-		if (m[i] == '\0') {
-			errorReq(r, 1);
-			return b;
-		}
+	//split by space
+	while(method[i] != ' ') {
+		if (method[i] == '\0') {errorReq(r, 1);return b;}
 		i++;
 	}
-	u = m+i+1;
-	while(*u == ' '&& *u != 0) u++;
-	m[i] = '\0';
-	if (strcmp(m, "GET") == 0) {
+	method[i] = '\0';
+	uri = method+i+1;
+	i = 0;
+	while(uri[i] != ' ') {
+		if (uri[i] == '\0') {errorReq(r, 2);return b;}
+		i++;
+	}
+	uri[i] = '\0';
+	ver = uri+i+1;
+	i = 0;
+	while(ver[i] != '\r' && ver[i] != '\n' &&ver[i] != '\n') {
+		if (ver[i] == '\0') {errorReq(r, 3);return b;}
+		i++;
+	}
+	ver[i] = '\0';
+	head = ver+i+1;
+	i = 0;
+	while(head[i] == '\r'||head[i] == '\n') i++;
+	head = head + i;
+
+	//set value in reqinfo
+	//Method
+	if (strcmp(method, "GET") == 0) {
 		r -> method = 0;
-	} else if (strcmp(m, "HEAD") == 0) {
+	} else if (strcmp(method, "HEAD") == 0) {
 		r -> method = 1;
 	} else {
-		errorReq(r, 2);
-		return b;
+		errorReq(r, 3);
 	}
 
-	i = 0;
-	while(u[i] != ' ') {
-		if (u[i] == '\0') {
-			errorReq(r, 3);
-			return b;
-		}
-		i++;
-	}
-
-	u[i] = '\0';
-	v = u+i+1;
-
-	if (invalidUri (u)) {
+	//URI
+	if (0&&invalidUri (uri)) {
 		errorReq(r, 15);
-		return b;
+		//return b;
+	} else {
+		r -> uri = (char*) malloc(strlen(uri) * sizeof(char));
+		if (r -> uri == NULL) {
+
+		}
+		strcpy(r -> uri, uri);
 	}
-	r -> uri = (char*) malloc(strlen(u) * sizeof(char));
-	strcpy(r -> uri, u);
 
-
-	while(*v == ' '&& *v != '\0') v++;
-	head = v;
-	if (strlen(v) < 8) {
-		fprintf(stderr, "v = %s--\n", v);
-		errorReq(r, 4);
-		return b;
-	} else if (v[7] == '0') {
+	//version
+	if (strcmp(ver, "HTTP/1.0") == 0) {
 		r -> version = 0;
-	} else if (v[7] == '1') {
+	} else if (strcmp(ver, "HTTP/1.1") == 0) {
 		r -> version = 1;
 	} else {
-		fprintf(stderr, "v = %s--\n", v);
-		errorReq(r, 44);
-		return b;
-	}
-	i = 0;
-
-	while (*head == ' '||*head == '\r' || *head == '\n') head++;
-	if (*head == '\0') {
-		perror("Wrong Request");
+		fprintf(stderr, "VERSION ERROR:%s\n", ver);
 		errorReq(r, 5);
-		return b;
 	}
+
+	free(method);
 	return head;
 }
 
@@ -168,7 +164,7 @@ void evalHeader(reqinfo* r, char* head, char* body) {
 		r -> accept = (char*) malloc(strlen(body) * sizeof(char));
 		strcpy(r -> accept, body);
 	} else {
-		fprintf(stderr, "Header not found-> %s%s\n", head, body);
+		//fprintf(stderr, "Header not found-> %s%s\n", head, body);
 	}
 }
 
@@ -178,12 +174,13 @@ void parseHeader (reqinfo* r, char* top){
 	int i=0, j=0;
 
 	while (*top != '\0') {
-
+		perror(top);
 		//head
 		i = 0;
 		while (top[i] != ':') {
 			if (top[i] == '\0') {
 				perror("Invalid Request");
+				fprintf(stderr, "%s\n", top);
 				errorReq(r, 50);
 				return;
 			}
@@ -195,8 +192,10 @@ void parseHeader (reqinfo* r, char* top){
 		//body
 		j = i;
 		while (top[j] != '\r' && top[j] != '\n') {
+			fprintf(stderr, "%c", top[j]);
 			if (top[j] == '\0') {
-				perror("Invalid Request");
+				perror("Invalid Request2");
+				fprintf(stderr, "%s : %s\n", top, top+i);
 				errorReq(r, 50);
 				return;
 			}
