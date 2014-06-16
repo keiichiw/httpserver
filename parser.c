@@ -153,6 +153,7 @@ char* parseMethod (reqinfo* r, char* b){
 	return head;
 }
 
+
 void evalHeader(reqinfo* r, char* head, char* body) {
 	if (strcmp(head, "Host") == 0) {
 		r -> host = (char*) malloc(strlen(body) * sizeof(char));

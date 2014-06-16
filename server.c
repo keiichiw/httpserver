@@ -12,7 +12,8 @@
 #include "server.h"
 #include "parser.h"
 #include "header.h"
-#define BUFF_SIZE 10240
+#define BUFF_SIZE 512
+#define MESSAGE_SIZE 2048
 
 char* statusMessage (reqinfo* r) {
 	switch (r -> status) {
@@ -32,14 +33,14 @@ char* statusMessage (reqinfo* r) {
 int isLastLine (char* s) { //line ends with \r\n\r\n
 	int len = strlen(s);
 	if (len > 2 && s[len-1] == '\n'
-			&& s[len-2] == '\r' && s[len-3] == '\n') {
+			&& s[len-2] == '\r' && s[len-3] == '\n' &&s[len-4] == '\r') {
 			return 1;
 	}
 	return 0;
 }
 
 reqinfo* getRequest (int cSock) {
-	char buff[BUFF_SIZE];
+	char buff[MESSAGE_SIZE];
 	char* top;
 	int strsize = 0, tsize;
 	reqinfo *r;
@@ -47,11 +48,11 @@ reqinfo* getRequest (int cSock) {
 	r -> host = "";
 
 	//Read Request
-	while ((tsize = read(cSock, buff+strsize, BUFF_SIZE - strsize)) > 0) {
+	while ((tsize = read(cSock, buff+strsize, MESSAGE_SIZE - strsize)) > 0) {
 		strsize += tsize;
 		if (isLastLine(buff)) break;
 	}
-	if (strsize >= BUFF_SIZE) {
+	if (strsize >= MESSAGE_SIZE) {
 		perror("Request is too long");
 		fprintf(stderr, "size=%d\n %s", strsize, buff);
 	}
