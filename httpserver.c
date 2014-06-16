@@ -50,7 +50,6 @@ int main (int argc, char* argv[]) {
 			close(sSock);
 
 			reqinfo* r = getRequest(cSock);
-			r -> status = 200;
 			r -> root = (char*) malloc(sizeof(char) * strlen(droot));
 			strcpy(r->root, droot);
 			sendResponse (r, cSock);

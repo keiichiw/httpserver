@@ -32,8 +32,8 @@ char* statusMessage (reqinfo* r) {
 
 int isLastLine (char* s) { //line ends with \r\n\r\n
 	int len = strlen(s);
-	if (len > 2 && s[len-1] == '\n'
-			&& s[len-2] == '\r' && s[len-3] == '\n' &&s[len-4] == '\r') {
+	if (len >= 4
+			&& strcmp (s+len-4, "\r\n\r\n") == 0) {
 			return 1;
 	}
 	return 0;
@@ -46,15 +46,17 @@ reqinfo* getRequest (int cSock) {
 	reqinfo *r;
 	r = (reqinfo*) malloc(sizeof(reqinfo));
 	r -> host = "";
-
+	r -> status = 200;
 	//Read Request
-	while ((tsize = read(cSock, buff+strsize, MESSAGE_SIZE - strsize)) > 0) {
-		strsize += tsize;
+	while ((tsize = read(cSock, buff+strsize, MESSAGE_SIZE - strsize)) || 1) {
+		if(tsize > 0) strsize += tsize;
+		buff[strsize] = '\0';
+		if(strsize >= MESSAGE_SIZE) {
+			perror("Request is too long");
+			r -> status = 400;
+			return r;
+		}
 		if (isLastLine(buff)) break;
-	}
-	if (strsize >= MESSAGE_SIZE) {
-		perror("Request is too long");
-		fprintf(stderr, "size=%d\n %s", strsize, buff);
 	}
 
 	//Parse Request
@@ -66,16 +68,17 @@ reqinfo* getRequest (int cSock) {
 
 
 	top = parseMethod(r, buff);
-	parseHeader(r, top);
+	//parseHeader(r, top);
 
 	//check Host:
+	/*
 	if (strlen(r -> host) == 0) {
 		if (r -> version != 0) {
 			fprintf(stderr, "Error No Host HTTP/%d %d", r->version, r -> error);
 			r -> status = 400;
 		}
 	}
-
+	*/
   return r;
 }
 
@@ -83,6 +86,7 @@ int sendHeadRes (reqinfo* r, int cSock, int flg) {
 	char res[100];
 	char time[100];
 	getGMT(time);
+	fprintf(stderr, "status == %d\n", r -> status);
 	sprintf (res,
 					 "HTTP/1.%d %s\r\nContent-type: %s\r\nDate: %s\r\n\r\n",
 					 r -> version, statusMessage(r),
@@ -91,6 +95,7 @@ int sendHeadRes (reqinfo* r, int cSock, int flg) {
 
 	if (write(cSock, res, strlen(res)) != strlen(res)) {
 		perror("Fail to send message");
+		if (flg == 1) close(cSock);
 		return -1;
 	}
 	if (flg == 1) close(cSock);
@@ -104,21 +109,21 @@ void sendGetRes (reqinfo* r, int cSock) {
 	int fd;
 	int strcnt = 0;
 	sprintf(path, "%s%s", r -> root, r -> uri);
-	sendHeadRes (r, cSock, 0);
 
 	fprintf(stderr, "Path:%s", path);
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		r -> status = 400;
-		if (errno == EACCES) {
-			r -> status = 404;
-		}
+	if ((fd = open(path, O_RDONLY)) < 0) {
+		r -> status = 404;
 		fprintf(stderr, "%s don't exist.", path);
-		close(fd);
-		return;
+		//return;
 	}
 	int sumcnt = 0;
 	fprintf(stderr,"sum = %d",sumcnt);
-	while ((strcnt = read(fd, buff, BUFF_SIZE)) != 0) {
+	sendHeadRes (r, cSock, 0);
+	if (r -> status != 200) {
+		close (cSock);
+		return;
+	}
+	while ((strcnt = read(fd, buff, BUFF_SIZE)) > 0) {
 		sumcnt += strcnt;
 		fprintf(stderr,"sum = %d",sumcnt);
 		int wcnt = 0;
@@ -128,7 +133,7 @@ void sendGetRes (reqinfo* r, int cSock) {
 			break;
 		}
 		while (wcnt < strcnt &&
-					 (flg  = write (cSock, buff + wcnt, strcnt - wcnt))) {
+					 (flg  = write (cSock, buff + wcnt, strcnt - wcnt)) >= 0) {
 			if (flg == -1) {
 				perror("Fail to send message");
 			}
@@ -153,5 +158,6 @@ void sendResponse (reqinfo* r, int cSock) {
 	} else {
 		perror ("No Method");
 	}
+	close(cSock);
 	return;
 }
