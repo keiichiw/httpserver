@@ -52,6 +52,7 @@ int main (int argc, char* argv[]) {
 			reqinfo* r = getRequest(cSock);
 			r -> root = (char*) malloc(sizeof(char) * strlen(droot));
 			strcpy(r->root, droot);
+			fprintf(stderr, "status == %d!!!!2\n", r->status);
 			sendResponse (r, cSock);
 			//all_free(r);
 

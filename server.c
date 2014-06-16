@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -13,8 +14,8 @@
 #include "parser.h"
 #include "header.h"
 #define BUFF_SIZE 512
-#define MESSAGE_SIZE 2048
-
+#define MESSAGE_SIZE 1024
+char last4[4];
 char* statusMessage (reqinfo* r) {
 	switch (r -> status) {
 	case 200:
@@ -38,7 +39,13 @@ int isLastLine (char* s) { //line ends with \r\n\r\n
 	}
 	return 0;
 }
-
+void strshift(char* str, int df) {
+	int i =0;
+	for (i = df; i<strlen(str);i++) {
+		str[i-df] = str[i];
+	}
+	return;
+}
 reqinfo* getRequest (int cSock) {
 	char buff[MESSAGE_SIZE];
 	char* top;
@@ -49,15 +56,39 @@ reqinfo* getRequest (int cSock) {
 	r -> status = 200;
 	//Read Request
 	while ((tsize = read(cSock, buff+strsize, MESSAGE_SIZE - strsize)) || 1) {
+		if (strsize >= 4) {
+			strcpy (last4, buff+strsize-4);
+		} else {
+			strcpy(last4, buff);
+		}
+
 		if(tsize > 0) strsize += tsize;
 		buff[strsize] = '\0';
 		if(strsize >= MESSAGE_SIZE) {
 			perror("Request is too long");
 			r -> status = 400;
-			return r;
+			fprintf(stderr,"status == %d!!!1\n",r -> status);
+			break;
 		}
-		if (isLastLine(buff)) break;
+		if (isLastLine(last4)) break;
 	}
+
+
+	if (r -> status == 400) {
+		return r;
+		/*
+		while ((tsize = read(cSock, buff, MESSAGE_SIZE))) {
+			buff[tsize] = '\0';
+			strshift(last4, tsize);
+			strcpy(last4+4-tsize, buff);
+			if (strcmp(last4, "\r\n\r\n") == 0) break;
+
+		}
+		fprintf(stderr,"status == %d!!!2\n",r -> status);
+		return r;
+		*/
+	}
+
 
 	//Parse Request
 	buff[strsize] = '\0';
@@ -88,11 +119,11 @@ int sendHeadRes (reqinfo* r, int cSock, int flg) {
 	getGMT(time);
 	fprintf(stderr, "status == %d\n", r -> status);
 	sprintf (res,
-					 "HTTP/1.%d %s\r\nContent-type: %s\r\nDate: %s\r\n\r\n",
+					 "HTTP/1.%d %s\r\nDate: %s\r\n\r\n",
 					 r -> version, statusMessage(r),
-					 getContentType(r -> uri),
 					 time);
 
+	fprintf(stderr, "%s\n", res);
 	if (write(cSock, res, strlen(res)) != strlen(res)) {
 		perror("Fail to send message");
 		if (flg == 1) close(cSock);
@@ -151,12 +182,11 @@ void sendGetRes (reqinfo* r, int cSock) {
 
 void sendResponse (reqinfo* r, int cSock) {
 	printReq(r);
-	if (r -> method == 0) {
+	if (r -> method == 0 && r -> status == 200) {
 		sendGetRes(r, cSock);
-	} else if (r -> method == 1) {
-		sendHeadRes(r, cSock, 1);
 	} else {
-		perror ("No Method");
+		perror("ERROR");
+		sendHeadRes(r, cSock, 1);
 	}
 	close(cSock);
 	return;
