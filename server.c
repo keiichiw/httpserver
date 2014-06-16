@@ -14,7 +14,7 @@
 #include "parser.h"
 #include "header.h"
 #define BUFF_SIZE 512
-#define MESSAGE_SIZE 1024
+#define MESSAGE_SIZE 10240
 char last4[4];
 char* statusMessage (reqinfo* r) {
 	switch (r -> status) {
@@ -33,9 +33,8 @@ char* statusMessage (reqinfo* r) {
 
 int isLastLine (char* s) { //line ends with \r\n\r\n
 	int len = strlen(s);
-	if (len >= 4
-			&& strcmp (s+len-4, "\r\n\r\n") == 0) {
-			return 1;
+	if (len >= 4 && strcmp(s+len-4, "\r\n\r\n") == 0) {
+		return 1;
 	}
 	return 0;
 }
@@ -55,40 +54,20 @@ reqinfo* getRequest (int cSock) {
 	r -> host = "";
 	r -> status = 200;
 	//Read Request
-	while ((tsize = read(cSock, buff+strsize, MESSAGE_SIZE - strsize)) || 1) {
-		if (strsize >= 4) {
-			strcpy (last4, buff+strsize-4);
-		} else {
-			strcpy(last4, buff);
-		}
 
-		if(tsize > 0) strsize += tsize;
+	while ((tsize = read(cSock, buff+strsize, MESSAGE_SIZE - strsize)) >= 0) {
+		if (tsize > 0) {
+			strsize += tsize;
+		}
 		buff[strsize] = '\0';
-		if(strsize >= MESSAGE_SIZE) {
+		if (isLastLine(buff)) break;
+		if (strsize >= MESSAGE_SIZE) {
 			perror("Request is too long");
+			fprintf(stderr, "size=%d\n %s", strsize, buff);
 			r -> status = 400;
-			fprintf(stderr,"status == %d!!!1\n",r -> status);
-			break;
+			return r;
 		}
-		if (isLastLine(last4)) break;
 	}
-
-
-	if (r -> status == 400) {
-		return r;
-		/*
-		while ((tsize = read(cSock, buff, MESSAGE_SIZE))) {
-			buff[tsize] = '\0';
-			strshift(last4, tsize);
-			strcpy(last4+4-tsize, buff);
-			if (strcmp(last4, "\r\n\r\n") == 0) break;
-
-		}
-		fprintf(stderr,"status == %d!!!2\n",r -> status);
-		return r;
-		*/
-	}
-
 
 	//Parse Request
 	buff[strsize] = '\0';
@@ -117,7 +96,6 @@ int sendHeadRes (reqinfo* r, int cSock, int flg) {
 	char res[100];
 	char time[100];
 	getGMT(time);
-	fprintf(stderr, "status == %d\n", r -> status);
 	sprintf (res,
 					 "HTTP/1.%d %s\r\nDate: %s\r\n\r\n",
 					 r -> version, statusMessage(r),
@@ -126,7 +104,6 @@ int sendHeadRes (reqinfo* r, int cSock, int flg) {
 	fprintf(stderr, "%s\n", res);
 	if (write(cSock, res, strlen(res)) != strlen(res)) {
 		perror("Fail to send message");
-		if (flg == 1) close(cSock);
 		return -1;
 	}
 	if (flg == 1) close(cSock);
@@ -140,21 +117,21 @@ void sendGetRes (reqinfo* r, int cSock) {
 	int fd;
 	int strcnt = 0;
 	sprintf(path, "%s%s", r -> root, r -> uri);
+	sendHeadRes (r, cSock, 0);
 
 	fprintf(stderr, "Path:%s", path);
-	if ((fd = open(path, O_RDONLY)) < 0) {
-		r -> status = 404;
+	if ((fd = open(path, O_RDONLY)) == -1) {
+		r -> status = 400;
+		if (errno == EACCES) {
+			r -> status = 404;
+		}
 		fprintf(stderr, "%s don't exist.", path);
-		//return;
+		close(fd);
+		return;
 	}
 	int sumcnt = 0;
 	fprintf(stderr,"sum = %d",sumcnt);
-	sendHeadRes (r, cSock, 0);
-	if (r -> status != 200) {
-		close (cSock);
-		return;
-	}
-	while ((strcnt = read(fd, buff, BUFF_SIZE)) > 0) {
+	while ((strcnt = read(fd, buff, BUFF_SIZE)) != 0) {
 		sumcnt += strcnt;
 		fprintf(stderr,"sum = %d",sumcnt);
 		int wcnt = 0;
@@ -164,7 +141,7 @@ void sendGetRes (reqinfo* r, int cSock) {
 			break;
 		}
 		while (wcnt < strcnt &&
-					 (flg  = write (cSock, buff + wcnt, strcnt - wcnt)) >= 0) {
+					 (flg  = write (cSock, buff + wcnt, strcnt - wcnt))) {
 			if (flg == -1) {
 				perror("Fail to send message");
 			}
@@ -188,6 +165,5 @@ void sendResponse (reqinfo* r, int cSock) {
 		perror("ERROR");
 		sendHeadRes(r, cSock, 1);
 	}
-	close(cSock);
 	return;
 }

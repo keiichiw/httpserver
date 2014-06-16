@@ -50,9 +50,11 @@ int main (int argc, char* argv[]) {
 			close(sSock);
 
 			reqinfo* r = getRequest(cSock);
-			r -> root = (char*) malloc(sizeof(char) * strlen(droot));
-			strcpy(r->root, droot);
-			fprintf(stderr, "status == %d!!!!2\n", r->status);
+			if (r -> status == 200) {
+				r -> root = (char*) malloc(sizeof(char) * strlen(droot));
+				strcpy(r->root, droot);
+				fprintf(stderr, "status == %d!!!!2\n", r->status);
+			}
 			sendResponse (r, cSock);
 			//all_free(r);
 
