@@ -13,7 +13,7 @@
 #include "server.h"
 #include "parser.h"
 #include "header.h"
-#define BUFF_SIZE 512
+#define BUFF_SIZE 1024
 #define MESSAGE_SIZE 10240
 char last4[4];
 char* statusMessage (reqinfo* r) {
@@ -51,7 +51,7 @@ reqinfo* getRequest (int cSock) {
 	int strsize = 0, tsize;
 	reqinfo *r;
 	r = (reqinfo*) malloc(sizeof(reqinfo));
-	r -> host = "";
+	r -> host = NULL;
 	r -> status = 200;
 	//Read Request
 
@@ -77,7 +77,7 @@ reqinfo* getRequest (int cSock) {
 
 
 
-	top = parseMethod(r, buff);
+	parseMethod(r, buff);
 	//parseHeader(r, top);
 
 	//check Host:
@@ -101,9 +101,9 @@ int sendHeadRes (reqinfo* r, int cSock, int flg) {
 					 r -> version, statusMessage(r),
 					 time);
 
-	fprintf(stderr, "%s\n", res);
 	if (write(cSock, res, strlen(res)) != strlen(res)) {
 		perror("Fail to send message");
+		close(cSock);
 		return -1;
 	}
 	if (flg == 1) close(cSock);
@@ -117,31 +117,29 @@ void sendGetRes (reqinfo* r, int cSock) {
 	int fd;
 	int strcnt = 0;
 	sprintf(path, "%s%s", r -> root, r -> uri);
-	sendHeadRes (r, cSock, 0);
 
 	fprintf(stderr, "Path:%s", path);
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		r -> status = 400;
-		if (errno == EACCES) {
-			r -> status = 404;
-		}
+		r -> status = 404;
 		fprintf(stderr, "%s don't exist.", path);
-		close(fd);
+		sendHeadRes (r, cSock, 1);
 		return;
 	}
+	sendHeadRes (r, cSock, 0);
+
 	int sumcnt = 0;
 	fprintf(stderr,"sum = %d",sumcnt);
 	while ((strcnt = read(fd, buff, BUFF_SIZE)) != 0) {
-		sumcnt += strcnt;
+		if (strcnt > 0)sumcnt += strcnt;
 		fprintf(stderr,"sum = %d",sumcnt);
 		int wcnt = 0;
 		int flg  = 0;
 		if (strcnt == -1) {
 			r -> status = 404;
-			break;
+			continue;
 		}
 		while (wcnt < strcnt &&
-					 (flg  = write (cSock, buff + wcnt, strcnt - wcnt))) {
+					 (flg  = write (cSock, buff+wcnt, strcnt - wcnt))) {
 			if (flg == -1) {
 				perror("Fail to send message");
 			}
