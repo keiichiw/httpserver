@@ -4,14 +4,7 @@
 #include "parser.h"
 #define BUFF_SIZE 1024
 
-void all_free (reqinfo* r) {
-	free(r -> host);
-	free(r -> user_agent);
-	free(r -> accept);
-	free(r -> uri);
-	free(r);
-	return;
-}
+
 void printReq (reqinfo* r) { //for debug
 	fprintf(stderr, "PrintReq----------\n");
 	fprintf(stderr, "Root:%s\n", r -> root);
@@ -20,9 +13,6 @@ void printReq (reqinfo* r) { //for debug
 	fprintf(stderr, "Status: %d\n", r -> status);
 	fprintf(stderr, "URI:%s\n", r -> uri);
 	fprintf(stderr, "HTTP/1.%d\n", r -> version);
-	fprintf(stderr, "Host:%s\n", r -> host);
-	fprintf(stderr, "User-Agent:%s\n", r -> user_agent);
-	fprintf(stderr, "Accept:%s\n", r -> accept);
 	fprintf(stderr, "------------------\n");
 }
 
@@ -62,10 +52,10 @@ void errorReq (reqinfo* r, int num) {
 int invalidUri (char* b) {
 	//check '<' and ".."
 	int r = 0, i = 0;
-	for (i = 0; i < strlen(b); i++) {
+	for (i = 0; i < (int) strlen(b); i++) {
 		if (b[i] == '<') {
 			r = 1;
-		} else if (i+1 < strlen(b) && b[i] == '.' && b[i+1] == '.') {
+		} else if (i+1 < (int) strlen(b) && b[i] == '.' && b[i+1] == '.') {
 			r = 1;
 		}
 	}
@@ -77,45 +67,64 @@ int invalidUri (char* b) {
 	m = "GET /index.php HTTP/1.1"
  */
 
-char* parseMethod (reqinfo* r, char* b){
-	char *method;
-	char *uri;
-	char *ver;
-	char *head;
-	int i = 0;
-	if (strlen(b) > BUFF_SIZE) {
+void parseMethod (reqinfo* r, char* b){
+	char method[10];
+	char uri[100];
+	char ver[10];
+	int u_head, v_head = 0;
+	int tail=0;
+	u_head = 0;
+	while (u_head < (int) strlen(b) && b[u_head] != '\0') {
+		if(b[u_head] == ' ') {
+			b[u_head] = '\0';
+			u_head++;
+			break;
+		}
+		u_head++;
+	}
+	if (strlen(b) > 10) {
 		fprintf (stderr, "%s", b);
 		errorReq(r, 100);
-		return b;
+		return;
 	}
-	method = (char*) malloc(strlen(b) * sizeof(char));
 	strcpy(method, b);
 	r->error = 0;
 
 	//split by space
-	while(method[i] != ' ') {
-		if (method[i] == '\0') {errorReq(r, 1);return b;}
-		i++;
+	v_head = 0;
+	while (v_head < (int)strlen(b+u_head) && b[u_head+v_head] != '\0') {
+		if (b[u_head+v_head] == ' ') {
+			b[u_head+v_head] = '\0';
+			v_head++;
+			break;
+		}
+		v_head++;
 	}
-	method[i] = '\0';
-	uri = method+i+1;
-	i = 0;
-	while(uri[i] != ' ') {
-		if (uri[i] == '\0') {errorReq(r, 2);return b;}
-		i++;
+	if(100 < (int)strlen(b+u_head)) {
+		perror("hogehoge");
+		fprintf (stderr, "%s", b);
+		errorReq(r, 100);
+		return;
 	}
-	uri[i] = '\0';
-	ver = uri+i+1;
-	i = 0;
-	while(ver[i] != '\r' && ver[i] != '\n' &&ver[i] != '\n') {
-		if (ver[i] == '\0') {errorReq(r, 3);return b;}
-		i++;
+	strcpy(uri, b+u_head);
+
+	tail = 0;
+	while(tail <(int) strlen(b+u_head+v_head) &&b[u_head+v_head+tail] != '\0') {
+		if(b[u_head+v_head+tail] == '\r') {
+			b[u_head+v_head+tail] = '\0';
+			tail++;
+			break;
+		}
+		tail++;
 	}
-	ver[i] = '\0';
-	head = ver+i+1;
-	i = 0;
-	while(head[i] == '\r'||head[i] == '\n') i++;
-	head = head + i;
+
+	if(10 < (int) strlen(b+u_head+v_head)) {
+		perror("fugafuga");
+		fprintf(stderr, "%s\n", b+u_head+v_head);
+		errorReq(r,100);
+		return;
+	}
+	strcpy(ver, b+u_head+v_head);
 
 	//set value in reqinfo
 	//Method
@@ -132,11 +141,11 @@ char* parseMethod (reqinfo* r, char* b){
 		errorReq(r, 15);
 		//return b;
 	} else {
-		r -> uri = (char*) malloc(strlen(uri) * sizeof(char));
-		if (r -> uri == NULL) {
-
+		if (strlen(uri) > 1024) {
+			r -> status = 400;
+		} else {
+			strcpy(r -> uri, uri);
 		}
-		strcpy(r -> uri, uri);
 	}
 
 	//version
@@ -149,25 +158,11 @@ char* parseMethod (reqinfo* r, char* b){
 		errorReq(r, 5);
 	}
 
-	free(method);
-	return head;
+	return;
 }
 
 
-void evalHeader(reqinfo* r, char* head, char* body) {
-	if (strcmp(head, "Host") == 0) {
-		r -> host = (char*) malloc(strlen(body) * sizeof(char));
-		strcpy(r -> host, body);
-	} else if (strcmp(head, "User-Agent") == 0) {
-		r -> user_agent = (char*) malloc(strlen(body) * sizeof(char));
-		strcpy(r -> user_agent, body);
-	} else if (strcmp(head, "Accept") == 0) {
-		r -> accept = (char*) malloc(strlen(body) * sizeof(char));
-		strcpy(r -> accept, body);
-	} else {
-		//fprintf(stderr, "Header not found-> %s%s\n", head, body);
-	}
-}
+
 
 void parseHeader (reqinfo* r, char* top){
 	char* head;
@@ -212,7 +207,6 @@ void parseHeader (reqinfo* r, char* top){
 		fprintf(stderr,"head:%s\n",head);
 		fprintf(stderr,"body:%s\n",body);
 		perror("\n********************");
-		evalHeader (r, head, body);
 	}
 
 	return;

@@ -14,7 +14,7 @@
 #include "parser.h"
 #include "header.h"
 #define BUFF_SIZE 1024
-#define MESSAGE_SIZE 10240
+#define MESSAGE_SIZE 1024
 char last4[4];
 char* statusMessage (reqinfo* r) {
 	switch (r -> status) {
@@ -40,19 +40,15 @@ int isLastLine (char* s) { //line ends with \r\n\r\n
 }
 void strshift(char* str, int df) {
 	int i =0;
-	for (i = df; i<strlen(str);i++) {
+	for (i = df; i < (int) strlen(str);i++) {
 		str[i-df] = str[i];
 	}
 	return;
 }
-reqinfo* getRequest (int cSock) {
+void getRequest (reqinfo* r, int cSock) {
 	char buff[MESSAGE_SIZE];
-	char* top;
 	int strsize = 0, tsize;
-	reqinfo *r;
-	r = (reqinfo*) malloc(sizeof(reqinfo));
-	r -> host = NULL;
-	r -> status = 200;
+
 	//Read Request
 
 	while ((tsize = read(cSock, buff+strsize, MESSAGE_SIZE - strsize)) >= 0) {
@@ -63,49 +59,36 @@ reqinfo* getRequest (int cSock) {
 		if (isLastLine(buff)) break;
 		if (strsize >= MESSAGE_SIZE) {
 			perror("Request is too long");
-			fprintf(stderr, "size=%d\n %s", strsize, buff);
 			r -> status = 400;
-			return r;
+			return;
 		}
 	}
-
 	//Parse Request
 	buff[strsize] = '\0';
 	chomp(buff);
 
-	fprintf(stderr, "\n+++++1++++\n%s\n+++2++\n", buff);
-
-
-
 	parseMethod(r, buff);
+	fprintf(stderr, "%s %d %d\n", r->uri, r->status, r->error);
 	//parseHeader(r, top);
-
-	//check Host:
-	/*
-	if (strlen(r -> host) == 0) {
-		if (r -> version != 0) {
-			fprintf(stderr, "Error No Host HTTP/%d %d", r->version, r -> error);
-			r -> status = 400;
-		}
-	}
-	*/
-  return r;
+  return;
 }
 
 int sendHeadRes (reqinfo* r, int cSock, int flg) {
 	char res[100];
 	char time[100];
+	int cnt = 0;
+	int sum = 0;
 	getGMT(time);
 	sprintf (res,
 					 "HTTP/1.%d %s\r\nDate: %s\r\n\r\n",
 					 r -> version, statusMessage(r),
 					 time);
 
-	if (write(cSock, res, strlen(res)) != strlen(res)) {
-		perror("Fail to send message");
-		close(cSock);
-		return -1;
+	while ((cnt = write(cSock, res + sum, strlen(res) - sum)) > 0) {
+		sum += cnt;
+		if (sum == (int) strlen(res)) break;
 	}
+
 	if (flg == 1) close(cSock);
 	return 0;
 }
@@ -125,13 +108,13 @@ void sendGetRes (reqinfo* r, int cSock) {
 		sendHeadRes (r, cSock, 1);
 		return;
 	}
+
 	sendHeadRes (r, cSock, 0);
 
 	int sumcnt = 0;
-	fprintf(stderr,"sum = %d",sumcnt);
+
 	while ((strcnt = read(fd, buff, BUFF_SIZE)) != 0) {
 		if (strcnt > 0)sumcnt += strcnt;
-		fprintf(stderr,"sum = %d",sumcnt);
 		int wcnt = 0;
 		int flg  = 0;
 		if (strcnt == -1) {
@@ -142,12 +125,11 @@ void sendGetRes (reqinfo* r, int cSock) {
 					 (flg  = write (cSock, buff+wcnt, strcnt - wcnt))) {
 			if (flg == -1) {
 				perror("Fail to send message");
+				break;
 			}
 			wcnt += flg;
-			fprintf(stderr,"wcnt = %d",wcnt);
 		}
 	}
-
 	close(fd);
 	close(cSock);
 	perror("connection closed");
@@ -156,11 +138,11 @@ void sendGetRes (reqinfo* r, int cSock) {
 
 
 void sendResponse (reqinfo* r, int cSock) {
-	printReq(r);
+	fprintf(stderr, "hoge%s %d %d\n", r->uri, r->status, r->error);
+	//printReq(r);
 	if (r -> method == 0 && r -> status == 200) {
 		sendGetRes(r, cSock);
 	} else {
-		perror("ERROR");
 		sendHeadRes(r, cSock, 1);
 	}
 	return;

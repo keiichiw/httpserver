@@ -48,16 +48,18 @@ int main (int argc, char* argv[]) {
 			perror("fork");
 		}else if(procId == 0) {
 			close(sSock);
-
-			reqinfo* r = getRequest(cSock);
-			if (r -> status == 200) {
-				r -> root = (char*) malloc(sizeof(char) * strlen(droot));
-				strcpy(r->root, droot);
-				fprintf(stderr, "status == %d!!!!2\n", r->status);
+			reqinfo r;
+			r.status = 200;
+			r.error = 0;
+			getRequest(&r, cSock);
+			perror("hogefuga");
+			if (r.status == 200 ) {
+				perror("aaa1");
+				strcpy(r.root, droot);
+				perror("aaa2");
 			}
-			sendResponse (r, cSock);
-			//all_free(r);
 
+			sendResponse (&r, cSock);
 			return 0;
 		}
 		close(cSock);
