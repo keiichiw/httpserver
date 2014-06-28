@@ -1,17 +1,9 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
 #include "server.h"
-#include "parser.h"
 #include "header.h"
 #define BUFF_SIZE 1024
 #define MESSAGE_SIZE 1024
@@ -138,7 +130,7 @@ void sendGetRes (reqinfo* r, int cSock) {
 
 
 void sendResponse (reqinfo* r, int cSock) {
-	fprintf(stderr, "hoge%s %d %d\n", r->uri, r->status, r->error);
+	fprintf(stderr, "URI:%s STATUS:%d ERROR:%d\n", r->uri, r->status, r->error);
 	//printReq(r);
 	if (r -> method == 0 && r -> status == 200) {
 		sendGetRes(r, cSock);

@@ -1,5 +1,14 @@
-all:
-	gcc -Wall parser.c sock.c header.c server.c httpserver.c -o httpserver
+CC		= gcc
+CFLAGS		= -Wall
+TARGET	= httpserver
+OBJS	= parser.o sock.o header.o server.o httpserver.o
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS)
 
 clean:
-	rm -f httpserver *~
+	rm -f $(TARGET) *~ *.o
+
+.c.o:
+	$(CC) $(CFLAGS) -c $<

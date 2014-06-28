@@ -7,11 +7,8 @@ typedef struct {
 	int method; // GET =0 HEAD=1
 	char uri[100];
 	int version;//0 or 1
-	/*
-	char* host;
-	char* user_agent;
-	char* accept;
-	*/
+	char host[300];
+	char user_agent[300];
 } reqinfo;
 void chomp (char*);
 void parseMethod (reqinfo* , char*);

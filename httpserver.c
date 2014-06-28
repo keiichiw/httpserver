@@ -1,11 +1,9 @@
 #include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
-#include "parser.h"
 #include "sock.h"
 #include "server.h"
 
@@ -22,7 +20,7 @@ int main (int argc, char* argv[]) {
 	pid_t procId;
 
 	if (argc < 3) {
-		perror("Please give PortNumber and root");
+		puts("Usage: ./httpserver <PortNumber> <Root directory>");
 		return 1;
 	}
 
@@ -52,13 +50,9 @@ int main (int argc, char* argv[]) {
 			r.status = 200;
 			r.error = 0;
 			getRequest(&r, cSock);
-			perror("hogefuga");
 			if (r.status == 200 ) {
-				perror("aaa1");
 				strcpy(r.root, droot);
-				perror("aaa2");
 			}
-
 			sendResponse (&r, cSock);
 			return 0;
 		}

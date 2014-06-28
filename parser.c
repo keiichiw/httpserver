@@ -42,7 +42,7 @@ void errorReq (reqinfo* r, int num) {
 		fprintf(stderr, "method is too long\n");
 		break;
 	default:
-		fprintf(stderr, "Error %d\n", num);
+		fprintf(stderr, "Error (Debug number: %d)\n", num);
 	}
 	return;
 }
@@ -101,7 +101,6 @@ void parseMethod (reqinfo* r, char* b){
 		v_head++;
 	}
 	if(100 < (int)strlen(b+u_head)) {
-		perror("hogehoge");
 		fprintf (stderr, "%s", b);
 		errorReq(r, 100);
 		return;
@@ -119,7 +118,6 @@ void parseMethod (reqinfo* r, char* b){
 	}
 
 	if(10 < (int) strlen(b+u_head+v_head)) {
-		perror("fugafuga");
 		fprintf(stderr, "%s\n", b+u_head+v_head);
 		errorReq(r,100);
 		return;
@@ -208,6 +206,6 @@ void parseHeader (reqinfo* r, char* top){
 		fprintf(stderr,"body:%s\n",body);
 		perror("\n********************");
 	}
-
+	//evalHeader(r, head, body);
 	return;
 }

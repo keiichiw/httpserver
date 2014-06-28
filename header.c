@@ -26,7 +26,7 @@ void getGMT (char* c) {
 	time(&timer);
 
 	gmt = gmtime(&timer);
-	//Date: Sun, 06 Jun 2010 04:36:09 GMT
+
 	sprintf(c, "%s, %02d %s %d %02d:%02d:%02d GMT",
 					wday[gmt->tm_wday],
 					gmt->tm_mday, month[gmt->tm_mon],
